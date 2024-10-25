@@ -192,6 +192,8 @@ After a successful start, you can verify the services by accessing the following
    - **Dashboard ID**: 10347  
    - **Link**: [Proxmox via Prometheus Dashboard](https://grafana.com/grafana/dashboards/10347-proxmox-via-prometheus/)
 
+![Grafana Dashboard](images/grafana-dashboard.png)
+
 ---
 
 ## Project Structure
