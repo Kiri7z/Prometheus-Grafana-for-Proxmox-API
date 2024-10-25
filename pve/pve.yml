@@ -1,0 +1,5 @@
+default:
+    user: prometheus@pam # type here username from proxmox 
+    token_name: "your-token-id" # type here token name
+    token_value: "..." # type here token value
+    verify_ssl: true # type true if you use certificates for proxmox or choose false
