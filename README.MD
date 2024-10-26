@@ -19,7 +19,7 @@ This repository contains a service for monitoring proxmox cluster from API. The 
 - [Running the Services](#running-the-services)
   - [Run the Containers](#step-6-run-the-containers)
   - [Verifying the Services](#step-7-verifying-the-services)
-- [Setupping Grafana](#setupping-grafana)
+- [Setuping Grafana](#setuping-grafana)
   - [Logging into Grafana](#step-8-logging-into-grafana)
   - [Adding a Prometheus Data Source](#step-9-adding-a-prometheus-data-source)
   - [Importing Dashboards](#step-10-importing-dashboards)
@@ -137,7 +137,7 @@ After a successful start, you can verify the services by accessing the following
   `http://localhost:3000/`
 
 ---
-## Setupping Grafana
+## Setuping Grafana
 
 ### Step 8: Logging into Grafana
 
