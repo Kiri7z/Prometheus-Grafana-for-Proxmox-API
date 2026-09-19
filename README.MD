@@ -40,6 +40,8 @@ Docker Compose stack for Proxmox VE API metrics. It runs Grafana, Prometheus, [p
 
 `secrets/`, `prometheus/targets.yml`, and `.env` are ignored by Git. The example files contain placeholders only. Never commit a real `pve.yml`, Telegram bot token, Grafana password, or exported Grafana contact point with credentials.
 
+The [alerting plan](docs/alerting.md) contains tested PromQL expressions with guest names and storage labels. The existing Grafana rules remain paused until the expected-running guests and Telegram destination are chosen.
+
 ## Updating an existing deployment
 
 Make a Proxmox backup of the monitoring container/VM first. Export any dashboards and alert rules edited through Grafana before replacing containers. Preserve the local `secrets/pve.yml` and `prometheus/targets.yml` files, then pull the reviewed Git branch on the server. Run `docker compose config --quiet`, `docker compose pull`, and `docker compose up -d`. Afterward verify container versions, Prometheus targets, dashboards, and alert delivery. Avoid `docker compose down -v`: the named volumes hold Grafana and Prometheus data.
