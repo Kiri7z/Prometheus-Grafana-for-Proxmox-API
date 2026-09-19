@@ -40,7 +40,7 @@ Docker Compose stack for Proxmox VE API metrics. It runs Grafana, Prometheus, [p
 
 `secrets/`, `prometheus/targets.yml`, and `.env` are ignored by Git. The example files contain placeholders only. Never commit a real `pve.yml`, Telegram bot token, Grafana password, or exported Grafana contact point with credentials.
 
-The [alerting plan](docs/alerting.md) contains tested PromQL expressions with guest names and storage labels. The existing Grafana rules remain paused until the expected-running guests and Telegram destination are chosen.
+The [alerting guide](docs/alerting.md) describes PromQL expressions for guest state, CPU, and storage. Choose guest allowlists and alert thresholds in Grafana for your environment.
 
 ## Updating an existing deployment
 
