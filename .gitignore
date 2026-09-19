@@ -1,0 +1,6 @@
+.DS_Store
+.env
+secrets/
+prometheus/targets.yml
+pve/pve.yml
+*.db

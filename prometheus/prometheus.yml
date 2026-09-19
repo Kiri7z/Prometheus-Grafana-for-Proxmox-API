@@ -9,11 +9,9 @@ scrape_configs:
     static_configs:
       - targets: ['node_exporter:9100']
   - job_name: 'pve'
-    static_configs:
-      - targets:
-        - node1.example.com   # type here Proxmox VE node1 ip address or domain name
-        - node2.example.com   # type here Proxmox VE node2 ip address or domain name
-        - node3.example.com   # type here Proxmox VE node3 ip address or domain name
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets.yml
     metrics_path: /pve
     params:
       module: [default]

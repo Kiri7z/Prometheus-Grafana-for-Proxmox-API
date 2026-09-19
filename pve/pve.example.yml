@@ -1,0 +1,5 @@
+default:
+  user: monitoring@pve
+  token_name: exporter
+  token_value: REPLACE_WITH_YOUR_TOKEN
+  verify_ssl: true

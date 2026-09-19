@@ -1,6 +1,6 @@
 services:
   node_exporter:
-    image: quay.io/prometheus/node-exporter:latest
+    image: quay.io/prometheus/node-exporter:v1.12.1
     container_name: node_exporter
     command:
       - '--path.rootfs=/host'
@@ -16,13 +16,14 @@ services:
       - monitoring_net
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.14.0
     container_name: prometheus
     ports:
       - '9090:9090'
     restart: unless-stopped
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/targets.yml:/etc/prometheus/targets.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--web.enable-lifecycle'
@@ -31,7 +32,7 @@ services:
       - monitoring_net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.2
     container_name: grafana
     ports:
       - '3000:3000'
@@ -42,13 +43,13 @@ services:
       - monitoring_net
 
   pve-exporter:
-    image: prompve/prometheus-pve-exporter
+    image: prompve/prometheus-pve-exporter:3.9.0
     container_name: pve-exporter
     ports:
       - '9221:9221'
     restart: unless-stopped
     volumes:
-      - ./pve/pve.yml:/etc/prometheus/pve.yml
+      - ./secrets/pve.yml:/etc/prometheus/pve.yml:ro
     networks:
       - monitoring_net
 
@@ -59,4 +60,3 @@ volumes:
 networks:
   monitoring_net:
     driver: bridge
-    
