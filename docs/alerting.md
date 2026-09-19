@@ -1,6 +1,6 @@
-# Alerting plan
+# Alerting
 
-The three legacy Grafana rules (`Stopped VM`, `CPU usage`, `Storage usage`) are paused. Their queries used an old, fixed Prometheus `instance` label; do not simply unpause them after deployment. Keep Grafana contact point credentials in Grafana, outside this repository.
+Keep Grafana contact point credentials and any environment-specific guest allowlist outside this public repository. Review existing rules and queries before enabling notifications after deployment.
 
 ## Guest state
 
@@ -12,9 +12,9 @@ pve_up{id=~"qemu/.+|lxc/.+"}
     pve_guest_info
 ```
 
-Each result is one guest with its `id`, `name`, `node`, and `type`. Alert when A is below 1 for 5 minutes. Select the guests expected to run continuously before enabling the rule; Proxmox cannot tell a planned shutdown from a fault. An absent series is different from a value of zero, so monitor the `pve` scrape separately.
+Each result is one guest with its `id`, `name`, `node`, and `type`. Replace the broad `id` regex above with an explicit allowlist of guests expected to run continuously. Add new guests deliberately; they will not be monitored automatically. Proxmox cannot tell a planned shutdown from a fault. An absent series is different from a value of zero.
 
-In Grafana's summary annotation, use `VM {{ $labels.name }} ({{ $labels.id }}) stopped on {{ $labels.node }}`. Test the query with a deliberately stopped, noncritical guest and check both the firing and resolved message.
+In Grafana's summary annotation, use `VM {{ $labels.name }} ({{ $labels.id }}) stopped on {{ $labels.node }}`. Test both the firing and resolved message with a deliberately stopped, noncritical guest.
 
 ## Guest CPU
 
@@ -48,9 +48,9 @@ The `dir` series retain `node` and `storage`; the shared PBS storages appear onc
 
 ## Notification noise
 
-- Route only these intended rules to a dedicated Telegram contact point. Keep the bot token and chat ID out of Git.
-- Group by alert rule; a group can contain several guests or storages. Set the repeat interval to a useful reminder cadence, such as 24 hours, rather than the default 4 hours.
+- Route only intended rules to the Telegram contact point. Keep the bot token and chat ID out of Git.
+- Group by alert rule; a group can contain several guests. Choose a repeat interval that avoids noisy reminders.
 - Use a pending period so brief restarts and load spikes do not page. Configure scrape failure as its own rule instead of treating missing guest data as a stopped guest.
-- Confirm which guests are expected to run, maintenance schedules, thresholds, and the Telegram destination before turning on notifications.
+- Review the guest allowlist whenever guests are added, retired, or scheduled to shut down.
 
-All three PromQL expressions were evaluated against the upgraded stack on 2026-09-19. They returned 17 guest state series, 17 guest CPU series, and 8 deduplicated storage series at that time.
+Validate each PromQL expression against your own cluster before enabling its alert rule.
