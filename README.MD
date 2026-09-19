@@ -19,10 +19,14 @@ Docker Compose stack for Proxmox VE API metrics. It runs Grafana, Prometheus, [p
    mkdir -p secrets
    cp pve/pve.example.yml secrets/pve.yml
    cp prometheus/targets.example.yml prometheus/targets.yml
-   chmod 600 secrets/pve.yml
+   chmod 700 secrets
+   sudo chgrp 101 secrets/pve.yml
+   chmod 640 secrets/pve.yml
    ```
 
 3. Edit `secrets/pve.yml` with the Proxmox API token. Set `verify_ssl: true` when the API certificate is trusted. Edit `prometheus/targets.yml` with **one reachable Proxmox node**; the exporter obtains cluster metrics through its API. Add more targets only when you specifically need them and understand the duplicate series they can produce.
+
+   Exporter 3.9.0 runs as UID/GID 101. The `root:101` and `0640` file permissions let only the exporter group read the bind-mounted token file; keep the `secrets` directory at `0700` on the host. Verify the UID/GID if you change the exporter image.
 4. Validate and start the stack:
 
    ```sh
