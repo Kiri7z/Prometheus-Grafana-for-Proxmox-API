@@ -517,76 +517,19 @@
       "type": "table"
     },
     {
+      "id": 7,
+      "type": "table",
+      "title": "Current CPU",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
-          "mappings": [
-            {
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "N/A"
-                }
-              },
-              "type": "special"
-            }
-          ],
-          "max": 1,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 0.7
-              },
-              {
-                "color": "#d44a3a",
-                "value": 0.9
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 11,
-        "w": 3,
         "x": 11,
-        "y": 0
+        "y": 0,
+        "w": 13,
+        "h": 7
       },
-      "id": 7,
-      "maxDataPoints": 100,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto",
-        "text": {}
-      },
-      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -594,88 +537,181 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "label_replace(\n  pve_cpu_usage_ratio{instance=\"$instance\"} / pve_cpu_usage_limit and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{node}}",
-          "range": true,
-          "refId": "A"
+          "expr": "max by (node) (label_replace(pve_cpu_usage_ratio{instance=\"$instance\",id=~\"node/.+\"} / pve_cpu_usage_limit{id=~\"node/.+\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "refId": "usage"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (node) (label_replace(pve_cpu_usage_limit{instance=\"$instance\",id=~\"node/.+\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "refId": "cores"
         }
       ],
-      "title": "Current CPU",
-      "type": "gauge"
+      "options": {
+        "cellHeight": "lg",
+        "showHeader": true,
+        "frameIndex": 0,
+        "sortBy": [
+          {
+            "displayName": "Node",
+            "desc": false
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Usage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.9
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total CPU"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "node",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true
+            },
+            "indexByName": {
+              "node": 0,
+              "Value #usage": 1,
+              "Value #cores": 2
+            },
+            "renameByName": {
+              "node": "Node",
+              "Value #usage": "Usage",
+              "Value #cores": "Total CPU"
+            }
+          }
+        }
+      ]
     },
     {
+      "id": 8,
+      "type": "table",
+      "title": "Current RAM",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "N/A"
-                }
-              },
-              "type": "special"
-            }
-          ],
-          "max": 1,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 0.6
-              },
-              {
-                "color": "#d44a3a",
-                "value": 0.8
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 11,
-        "w": 3,
-        "x": 14,
-        "y": 0
+        "x": 11,
+        "y": 7,
+        "w": 13,
+        "h": 8
       },
-      "id": 8,
-      "maxDataPoints": 100,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto",
-        "text": {}
-      },
-      "pluginVersion": "11.3.0",
       "targets": [
         {
           "datasource": {
@@ -683,18 +719,218 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": false,
-          "expr": "label_replace(\n  pve_memory_usage_bytes{instance=\"$instance\"} / pve_memory_size_bytes and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "time_series",
-          "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "{{node}}",
-          "range": true,
-          "refId": "A"
+          "expr": "max by (node) (label_replace(pve_memory_usage_bytes{instance=\"$instance\",id=~\"node/.+\"} / pve_memory_size_bytes{id=~\"node/.+\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "refId": "usage"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (node) (label_replace(pve_memory_usage_bytes{instance=\"$instance\",id=~\"node/.+\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "refId": "used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (node) (label_replace(pve_memory_size_bytes{instance=\"$instance\",id=~\"node/.+\"}, \"node\", \"$1\", \"id\", \"node/(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "refId": "total"
         }
       ],
-      "title": "Current memory",
-      "type": "gauge"
+      "options": {
+        "cellHeight": "lg",
+        "showHeader": true,
+        "frameIndex": 0,
+        "sortBy": [
+          {
+            "displayName": "Node",
+            "desc": false
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Node"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Usage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.9
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "node",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true
+            },
+            "indexByName": {
+              "node": 0,
+              "Value #usage": 1,
+              "Value #used": 2,
+              "Value #total": 3
+            },
+            "renameByName": {
+              "node": "Node",
+              "Value #usage": "Usage",
+              "Value #used": "Used",
+              "Value #total": "Total"
+            }
+          }
+        }
+      ]
     },
     {
       "datasource": {
@@ -742,15 +978,15 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
-        "w": 7,
-        "x": 17,
-        "y": 0
+        "x": 11,
+        "y": 15,
+        "w": 13,
+        "h": 15
       },
       "id": 11,
       "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
+        "minVizHeight": 100,
+        "minVizWidth": 160,
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -772,263 +1008,28 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "exemplar": true,
-          "expr": "(pve_disk_usage_bytes{instance=\"$instance\",id=~\"storage/.+\"} / pve_disk_size_bytes{instance=\"$instance\",id=~\"storage/.+\"}) * on (id, instance) group_left(node, storage) pve_storage_info{instance=\"$instance\"}",
-          "format": "time_series",
+          "expr": "(pve_disk_usage_bytes{instance=\"$instance\",id=~\"storage/.+\"} / pve_disk_size_bytes{instance=\"$instance\",id=~\"storage/.+\"}) * on (id, instance) group_left(node, storage) pve_storage_info{instance=\"$instance\",plugintype=\"dir\"}",
           "instant": true,
-          "interval": "",
-          "intervalFactor": 1,
+          "range": false,
           "legendFormat": "{{node}} | {{storage}}",
-          "refId": "usage"
+          "refId": "local"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (storage) ((pve_disk_usage_bytes{instance=\"$instance\",id=~\"storage/.+\"} / pve_disk_size_bytes{instance=\"$instance\",id=~\"storage/.+\"}) * on (id, instance) group_left(storage) pve_storage_info{instance=\"$instance\",plugintype=\"pbs\"})",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{storage}}",
+          "refId": "shared"
         }
       ],
       "title": "Storage usage",
       "type": "gauge",
-      "description": "Usage of each Proxmox storage on each node. Shared storages appear once per node."
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "text",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "CPUs"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 3,
-        "x": 11,
-        "y": 11
-      },
-      "id": 22,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "\nlabel_replace(\n  pve_cpu_usage_limit and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "heatmap",
-          "instant": true,
-          "legendFormat": "{{node}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "CPUs count",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "percentage",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 60
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value #used"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "used"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value #total"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "total"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "text",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 10,
-        "x": 14,
-        "y": 11
-      },
-      "id": 20,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 20
-        },
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "label_replace(\n  pve_memory_usage_bytes{instance=\"$instance\"} and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "{{node}}",
-          "range": false,
-          "refId": "used"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "label_replace(\n  pve_memory_size_bytes{instance=\"$instance\"} and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "time_series",
-          "hide": false,
-          "instant": true,
-          "legendFormat": "{{node}}",
-          "range": false,
-          "refId": "total"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "\nlabel_replace(\n  pve_memory_size_bytes{instance=\"$instance\"} and on(id) pve_node_info,\n  \"node\", \"$1\", \"id\", \"node/(.+)\"\n)",
-          "format": "time_series",
-          "hide": true,
-          "instant": true,
-          "legendFormat": "{{node}}",
-          "range": false,
-          "refId": "total_for_max"
-        }
-      ],
-      "title": "Memory Used / Memory Total",
-      "transformations": [
-        {
-          "id": "configFromData",
-          "options": {
-            "configRefId": "total_for_max",
-            "mappings": [
-              {
-                "fieldName": "Value #total_for_max",
-                "handlerKey": "max"
-              }
-            ]
-          }
-        }
-      ],
-      "type": "stat"
+      "description": "Local directory storage is shown per node; shared PBS storage is shown once per storage name."
     },
     {
       "datasource": {
@@ -1099,7 +1100,7 @@
         "h": 9,
         "w": 13,
         "x": 11,
-        "y": 19
+        "y": 30
       },
       "id": 2,
       "options": {
@@ -1334,7 +1335,7 @@
         "h": 10,
         "w": 13,
         "x": 11,
-        "y": 28
+        "y": 39
       },
       "id": 5,
       "options": {
@@ -1581,7 +1582,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 49
       },
       "id": 13,
       "options": {
@@ -1699,7 +1700,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 59
       },
       "id": 12,
       "options": {
@@ -1808,7 +1809,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 67
       },
       "id": 9,
       "options": {
