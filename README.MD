@@ -2,11 +2,15 @@
 
 This repository runs a Docker Compose monitoring stack for a Proxmox VE cluster. It started as a dashboard and setup guide; after two years of use, the configuration and dashboard were updated to reflect what worked in production.
 
+![Grafana dashboard showing Proxmox guest and storage metrics](images/grafana-dashboard.png)
+
+*An earlier dashboard screenshot. The dashboard JSON in this repository contains the current layout.*
+
 | Component | Purpose |
 | --- | --- |
 | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) | Reads cluster, node, guest, and storage metrics from the Proxmox API. This link points to the exporter's **upstream project**, not to a copy of this repository. |
 | Prometheus | Scrapes and stores metrics from the exporters. |
-| Grafana | Displays the included Proxmox dashboard and manages alerts. |
+| Grafana | Displays the included Proxmox dashboard. |
 | node_exporter | Reports metrics for the host running this Compose stack. |
 
 The versions used by this project are pinned in [docker-compose.yaml](docker-compose.yaml). The dashboard JSON is in [dashboards/proxmox-via-prometheus.json](dashboards/proxmox-via-prometheus.json).
@@ -18,7 +22,7 @@ The versions used by this project are pinned in [docker-compose.yaml](docker-com
 - Usage of local storage per node and shared PBS storage once per storage name.
 - Guest CPU, memory, network, and disk I/O history where Proxmox exposes those metrics.
 
-**Disk capacity is different from free space inside a VM.** The Proxmox API reports a QEMU virtual disk's configured size and I/O, but it does not reliably report used filesystem space inside that guest. The dashboard shows guest filesystem usage for LXC containers only. For a QEMU guest, install an exporter inside the operating system, such as node_exporter for Linux or windows_exporter for Windows, if you need a free-space alert. Proxmox *storage* usage is monitored separately.
+**Disk capacity is different from free space inside a VM.** The Proxmox API reports a QEMU virtual disk's configured size and I/O, but it does not reliably report used filesystem space inside that guest. The dashboard shows guest filesystem usage for LXC containers only. To measure free space inside a QEMU guest, collect filesystem metrics from its operating system. Proxmox *storage* usage is monitored separately.
 
 ## 1. Create a read-only Proxmox API token
 
@@ -62,7 +66,7 @@ In `prometheus/targets.yml`, put one reachable Proxmox node's hostname or IP add
 
 The exporter can obtain cluster data through that node's API. Scraping every node with the same cluster token may create duplicate series. The hostname should resolve **from the exporter container**, not just from your browser.
 
-`secrets/`, `prometheus/targets.yml`, `pve/pve.yml`, and `.env` are ignored by Git. The example files contain placeholders. Do not commit an API token, Grafana password, Telegram bot token, chat ID, or a Grafana export that contains credentials.
+`secrets/`, `prometheus/targets.yml`, `pve/pve.yml`, and `.env` are ignored by Git. The example files contain placeholders. Do not commit API tokens, passwords, or exported configurations containing credentials.
 
 ## 3. Start and verify the stack
 
@@ -85,24 +89,6 @@ On the monitoring host, open `http://localhost:9090/targets`. The `prometheus`, 
 
 The included dashboard builds on Grafana dashboard [10347, Proxmox via Prometheus](https://grafana.com/grafana/dashboards/10347-proxmox-via-prometheus/) and includes local improvements to guest names, node resource panels, and shared storage display. For host-level metrics from node_exporter, you can also import the independent [Node Exporter Full dashboard, ID 1860](https://grafana.com/grafana/dashboards/1860-node-exporter-full/).
 
-## 5. Configure alerts
-
-Grafana stores alert rules and Telegram contact-point credentials in its own data volume; they are not part of this public repository. [docs/alerting.md](docs/alerting.md) contains reusable PromQL queries and explains the choices behind these rules:
-
-| Alert | Example condition |
-| --- | --- |
-| Expected-to-run guest stopped | Guest status below 1 for 5 minutes; explicitly select which guests must always run. |
-| Guest or Proxmox node CPU | Above 80% for 5 minutes. |
-| Proxmox storage usage | Above 90% for 5 minutes; shared PBS storage should create one alert, not one per node. |
-
-Create a Telegram contact point in Grafana, enter the bot token and chat ID there, and send a test notification. Use `name`, `id`, `node`, and `storage` labels in the notification template so messages identify the affected object. Keep the bot token outside Git.
-
-## Updating an existing installation
-
-Back up the monitoring VM or container first. Export dashboards and alert rules that you edited through Grafana. Pull the reviewed `main` branch on the server, keep the local `secrets/pve.yml` and `prometheus/targets.yml`, then run `docker compose config --quiet`, `docker compose pull`, and `docker compose up -d`. Confirm the targets, dashboard, and Telegram delivery afterward.
-
-Avoid `docker compose down -v` during an update: the named volumes hold Prometheus and Grafana data.
-
 ## Repository layout
 
 ```text
@@ -110,7 +96,6 @@ Avoid `docker compose down -v` during an update: the named volumes hold Promethe
 ├── README.MD
 ├── docker-compose.yaml
 ├── dashboards/proxmox-via-prometheus.json
-├── docs/alerting.md
 ├── prometheus/
 │   ├── prometheus.yml
 │   └── targets.example.yml
