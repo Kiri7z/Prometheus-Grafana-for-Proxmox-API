@@ -1,49 +1,120 @@
-# Proxmox VE monitoring with Prometheus and Grafana
+# Prometheus and Grafana monitoring for Proxmox VE
 
-Docker Compose stack for Proxmox VE API metrics. It runs Grafana, Prometheus, [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter), and node_exporter. Image versions are pinned in `docker-compose.yaml` so an update is deliberate and reproducible.
+This repository runs a Docker Compose monitoring stack for a Proxmox VE cluster. It started as a dashboard and setup guide; after two years of use, the configuration and dashboard were updated to reflect what worked in production.
 
-## What is monitored
+| Component | Purpose |
+| --- | --- |
+| [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) | Reads cluster, node, guest, and storage metrics from the Proxmox API. This link points to the exporter's **upstream project**, not to a copy of this repository. |
+| Prometheus | Scrapes and stores metrics from the exporters. |
+| Grafana | Displays the included Proxmox dashboard and manages alerts. |
+| node_exporter | Reports metrics for the host running this Compose stack. |
 
-- Proxmox nodes, storage, QEMU VMs, and LXC containers through the Proxmox API.
-- The Docker host through node_exporter.
-- The included [Proxmox dashboard](dashboards/proxmox-via-prometheus.json) is based on dashboard 10347 and includes local improvements. Import it in Grafana and select the Prometheus data source.
+The versions used by this project are pinned in [docker-compose.yaml](docker-compose.yaml). The dashboard JSON is in [dashboards/proxmox-via-prometheus.json](dashboards/proxmox-via-prometheus.json).
 
-**QEMU disk limitation:** `pve_disk_size_bytes` gives the virtual disk size, and `pve_disk_read_bytes` / `pve_disk_write_bytes` give I/O counters. In our cluster `pve_disk_usage_bytes` is zero for every QEMU VM, so it cannot be used as guest filesystem utilization. The dashboard only shows disk usage percentages for LXC guests. To alert on free space *inside* a QEMU guest, collect filesystem metrics from the guest OS (for example, node_exporter on Linux or windows_exporter on Windows) or a verified QEMU Guest Agent integration. Proxmox storage usage is a separate metric.
+## What the dashboard shows
 
-## One-time setup
+- CPU, RAM, status, and virtual disk capacity for QEMU VMs and LXC containers.
+- CPU and RAM usage for Proxmox nodes.
+- Usage of local storage per node and shared PBS storage once per storage name.
+- Guest CPU, memory, network, and disk I/O history where Proxmox exposes those metrics.
 
-1. Create a dedicated Proxmox API user and token with read-only permissions, following the [exporter documentation](https://github.com/prometheus-pve/prometheus-pve-exporter). Do not use a root token.
-2. Create local configuration files from the examples:
+**Disk capacity is different from free space inside a VM.** The Proxmox API reports a QEMU virtual disk's configured size and I/O, but it does not reliably report used filesystem space inside that guest. The dashboard shows guest filesystem usage for LXC containers only. For a QEMU guest, install an exporter inside the operating system, such as node_exporter for Linux or windows_exporter for Windows, if you need a free-space alert. Proxmox *storage* usage is monitored separately.
 
-   ```sh
-   mkdir -p secrets
-   cp pve/pve.example.yml secrets/pve.yml
-   cp prometheus/targets.example.yml prometheus/targets.yml
-   chmod 700 secrets
-   sudo chgrp 101 secrets/pve.yml
-   chmod 640 secrets/pve.yml
-   ```
+## 1. Create a read-only Proxmox API token
 
-3. Edit `secrets/pve.yml` with the Proxmox API token. Set `verify_ssl: true` when the API certificate is trusted. Edit `prometheus/targets.yml` with **one reachable Proxmox node**; the exporter obtains cluster metrics through its API. Add more targets only when you specifically need them and understand the duplicate series they can produce.
+1. In the Proxmox UI, open **Datacenter → Permissions → Users** and create a dedicated monitoring user, for example `monitoring@pve`. An existing read-only service account also works.
+2. Under **Datacenter → Permissions**, grant that user the `PVEAuditor` role at `/` so the exporter can read cluster-wide data.
+3. Create an API token for the user. If the token uses privilege separation, grant the token the same read-only access: its effective permissions are limited by both the token and its user. Copy the token value when it is displayed; Proxmox does not show it again.
 
-   Exporter 3.9.0 runs as UID/GID 101. The `root:101` and `0640` file permissions let only the exporter group read the bind-mounted token file; keep the `secrets` directory at `0700` on the host. Verify the UID/GID if you change the exporter image.
-4. Validate and start the stack:
+Use a token for monitoring rather than an administrator password. See the [Proxmox user-management guide](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf) and the [exporter's setup instructions](https://github.com/prometheus-pve/prometheus-pve-exporter#proxmox-ve-configuration) for permission details.
 
-   ```sh
-   docker compose config --quiet
-   docker compose pull
-   docker compose up -d
-   docker compose ps
-   ```
+## 2. Create local configuration files
 
-5. In Grafana, add Prometheus at `http://prometheus:9090`, then import `dashboards/proxmox-via-prometheus.json` and choose that data source. Check `http://localhost:9090/targets` for the `prometheus`, `node`, and `pve` jobs.
+From the repository root:
 
-`secrets/`, `prometheus/targets.yml`, and `.env` are ignored by Git. The example files contain placeholders only. Never commit a real `pve.yml`, Telegram bot token, Grafana password, or exported Grafana contact point with credentials.
+```sh
+mkdir -p secrets
+cp pve/pve.example.yml secrets/pve.yml
+cp prometheus/targets.example.yml prometheus/targets.yml
+chmod 700 secrets
+sudo chgrp 101 secrets/pve.yml
+chmod 640 secrets/pve.yml
+```
 
-The [alerting guide](docs/alerting.md) describes PromQL expressions for guest state, CPU, and storage. Choose guest allowlists and alert thresholds in Grafana for your environment.
+Edit `secrets/pve.yml` with the monitoring user, token name, and token value:
 
-## Updating an existing deployment
+```yaml
+default:
+  user: monitoring@pve
+  token_name: exporter
+  token_value: REPLACE_WITH_YOUR_TOKEN
+  verify_ssl: true
+```
 
-Make a Proxmox backup of the monitoring container/VM first. Export any dashboards and alert rules edited through Grafana before replacing containers. Preserve the local `secrets/pve.yml` and `prometheus/targets.yml` files, then pull the reviewed Git branch on the server. Run `docker compose config --quiet`, `docker compose pull`, and `docker compose up -d`. Afterward verify container versions, Prometheus targets, dashboards, and alert delivery. Avoid `docker compose down -v`: the named volumes hold Grafana and Prometheus data.
+The exporter image currently runs as UID/GID 101, so group 101 needs read access to the mounted token file. Check this again if you change the exporter image. Keep TLS verification enabled when the Proxmox API certificate is trusted by the exporter; `verify_ssl: false` is an explicit workaround for an untrusted certificate.
 
-The repository does not configure pfSense, HAProxy, or TLS termination.
+In `prometheus/targets.yml`, put one reachable Proxmox node's hostname or IP address:
+
+```yaml
+- targets:
+    - node1.example.com
+```
+
+The exporter can obtain cluster data through that node's API. Scraping every node with the same cluster token may create duplicate series. The hostname should resolve **from the exporter container**, not just from your browser.
+
+`secrets/`, `prometheus/targets.yml`, `pve/pve.yml`, and `.env` are ignored by Git. The example files contain placeholders. Do not commit an API token, Grafana password, Telegram bot token, chat ID, or a Grafana export that contains credentials.
+
+## 3. Start and verify the stack
+
+Install Docker Engine with the Compose plugin, then run:
+
+```sh
+docker compose config --quiet
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+On the monitoring host, open `http://localhost:9090/targets`. The `prometheus`, `node`, and `pve` jobs should be **UP**. In the Prometheus query page, try `pve_up`, `pve_guest_info`, and `pve_storage_info` to confirm that the Proxmox API data is present. Grafana is served on port 3000; complete its initial account setup before exposing it to other users.
+
+## 4. Set up Grafana
+
+1. In **Connections → Data sources**, add **Prometheus** with URL `http://prometheus:9090`. Grafana and Prometheus share the Compose network, so Grafana uses the service name rather than `localhost`.
+2. In **Dashboards → New → Import**, upload [dashboards/proxmox-via-prometheus.json](dashboards/proxmox-via-prometheus.json) and select the Prometheus data source.
+3. Select the Proxmox API target in the dashboard's `instance` variable and check that guest names, node totals, and storage names match your cluster.
+
+The included dashboard builds on Grafana dashboard [10347, Proxmox via Prometheus](https://grafana.com/grafana/dashboards/10347-proxmox-via-prometheus/) and includes local improvements to guest names, node resource panels, and shared storage display. For host-level metrics from node_exporter, you can also import the independent [Node Exporter Full dashboard, ID 1860](https://grafana.com/grafana/dashboards/1860-node-exporter-full/).
+
+## 5. Configure alerts
+
+Grafana stores alert rules and Telegram contact-point credentials in its own data volume; they are not part of this public repository. [docs/alerting.md](docs/alerting.md) contains reusable PromQL queries and explains the choices behind these rules:
+
+| Alert | Example condition |
+| --- | --- |
+| Expected-to-run guest stopped | Guest status below 1 for 5 minutes; explicitly select which guests must always run. |
+| Guest or Proxmox node CPU | Above 80% for 5 minutes. |
+| Proxmox storage usage | Above 90% for 5 minutes; shared PBS storage should create one alert, not one per node. |
+
+Create a Telegram contact point in Grafana, enter the bot token and chat ID there, and send a test notification. Use `name`, `id`, `node`, and `storage` labels in the notification template so messages identify the affected object. Keep the bot token outside Git.
+
+## Updating an existing installation
+
+Back up the monitoring VM or container first. Export dashboards and alert rules that you edited through Grafana. Pull the reviewed `main` branch on the server, keep the local `secrets/pve.yml` and `prometheus/targets.yml`, then run `docker compose config --quiet`, `docker compose pull`, and `docker compose up -d`. Confirm the targets, dashboard, and Telegram delivery afterward.
+
+Avoid `docker compose down -v` during an update: the named volumes hold Prometheus and Grafana data.
+
+## Repository layout
+
+```text
+.
+├── README.MD
+├── docker-compose.yaml
+├── dashboards/proxmox-via-prometheus.json
+├── docs/alerting.md
+├── prometheus/
+│   ├── prometheus.yml
+│   └── targets.example.yml
+└── pve/pve.example.yml
+```
+
+HAProxy configuration, the TLS certificate, and domain settings are not included in this repository.

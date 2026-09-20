@@ -19,32 +19,46 @@ In Grafana's summary annotation, use `VM {{ $labels.name }} ({{ $labels.id }}) s
 ## Guest CPU
 
 ```promql
-100 * pve_cpu_usage_ratio{id=~"qemu/.+|lxc/.+"}
+100 * pve_cpu_usage_ratio{job="pve",id=~"qemu/.+|lxc/.+"}
   * on (id, instance) group_left(name, node, type)
-    pve_guest_info
+    pve_guest_info{job="pve"}
 ```
 
-This reports the percentage of the guest's allocated CPU capacity. As a starting point, alert above 90% for 10 minutes. High CPU is often expected during scheduled work, so tune the threshold and pending time after observing real workloads.
+This reports the percentage of the guest's allocated CPU capacity. A rule above 80% for 5 minutes matches the dashboard's `CPU util` column. High CPU can be expected during scheduled work, so tune the threshold and pending time after observing real workloads.
+
+## Proxmox node CPU
+
+```promql
+100 * pve_cpu_usage_ratio{job="pve",id=~"node/.+"}
+  * on (id, instance) group_left(name)
+    pve_node_info{job="pve"}
+```
+
+The `name` label identifies the node in Telegram. Alert above 80% for 5 minutes if that suits the cluster's workload.
 
 ## Storage usage
 
 ```promql
 (
-  100 * pve_disk_usage_bytes{id=~"storage/.+"}
-    / pve_disk_size_bytes{id=~"storage/.+"}
-    * on (id, instance) group_left(storage, node, plugintype)
-      pve_storage_info{plugintype="dir"}
+  (
+    100 * pve_disk_usage_bytes{job="pve",id=~"storage/.+"}
+      / pve_disk_size_bytes{job="pve",id=~"storage/.+"}
+  )
+  * on (id, instance) group_left(storage, node, plugintype)
+    pve_storage_info{job="pve",plugintype!="pbs"}
 )
 or
-max by (storage, plugintype) (
-  100 * pve_disk_usage_bytes{id=~"storage/.+"}
-    / pve_disk_size_bytes{id=~"storage/.+"}
-    * on (id, instance) group_left(storage, node, plugintype)
-      pve_storage_info{plugintype="pbs"}
+max by (storage) (
+  (
+    100 * pve_disk_usage_bytes{job="pve",id=~"storage/.+"}
+      / pve_disk_size_bytes{job="pve",id=~"storage/.+"}
+  )
+  * on (id, instance) group_left(storage)
+    pve_storage_info{job="pve",plugintype="pbs"}
 )
 ```
 
-The `dir` series retain `node` and `storage`; the shared PBS storages appear once each. Other storage plugin types need an explicit decision about whether they are local or shared. Start with a warning above 85% for 15 minutes and a critical rule above 95% for 5 minutes. If a storage already exceeds a threshold, expect a real alert when enabling the rule.
+Non-PBS series retain `node` and `storage`; shared PBS storage appears once per name. Review any additional shared storage plugin types before adding them to this query. A rule above 90% for 5 minutes is a useful starting point. If a storage already exceeds the threshold, expect a real alert when enabling the rule.
 
 ## Notification noise
 
