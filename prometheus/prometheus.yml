@@ -22,3 +22,8 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: pve-exporter:9221
+  - job_name: 'pve-qga'
+    scrape_interval: 5m
+    scrape_timeout: 50s
+    static_configs:
+      - targets: ['pve-qga-exporter:9222']

@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Proxmox VE cluster metrics from prometheus-pve-exporter. Guest filesystem usage inside QEMU requires guest-side metrics.",
+  "description": "Proxmox VE cluster metrics from prometheus-pve-exporter, including QEMU guest filesystem usage through QEMU Guest Agent.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -14,7 +14,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Disk is provisioned guest disk size. Disk usage is shown only for LXC; QEMU guest filesystem usage is not exposed by these metrics.",
+      "description": "Disk is provisioned guest disk size. Filesystem usage inside QEMU guests is shown in the QEMU guest filesystem usage panel.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1824,6 +1824,202 @@
       "title": "LXC guests Disk usage",
       "type": "timeseries",
       "description": "Filesystem usage reported by Proxmox for LXC containers. QEMU guest filesystem usage requires guest-side metrics."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Filesystem usage reported by QEMU Guest Agent. Guests without a working agent are omitted. Collected every five minutes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Usage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "id": 25,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Usage"
+          }
+        ]
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "pve_qga_fs_used_bytes",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "pve_qga_fs_size_bytes",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "size"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "pve_qga_fs_used_bytes / pve_qga_fs_size_bytes",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "refId": "usage"
+        }
+      ],
+      "title": "QEMU guest filesystem usage",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "filesystem",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Value #used": false,
+              "Value #size": false,
+              "Value #usage": false,
+              "disk": true,
+              "filesystem": true,
+              "vmid": true
+            },
+            "indexByName": {
+              "name": 0,
+              "id": 1,
+              "node": 2,
+              "mountpoint": 3,
+              "fstype": 4,
+              "Value #used": 5,
+              "Value #size": 6,
+              "Value #usage": 7
+            },
+            "renameByName": {
+              "name": "VM",
+              "id": "ID",
+              "node": "Node",
+              "mountpoint": "Filesystem",
+              "fstype": "Type",
+              "Value #used": "Used",
+              "Value #size": "Total",
+              "Value #usage": "Usage"
+            }
+          }
+        }
+      ],
+      "type": "table"
     }
   ],
   "preload": false,
@@ -1864,7 +2060,7 @@
   "timezone": "",
   "title": "Proxmox via Prometheus - 10347",
   "uid": "Dp7Cd57Zzz",
-  "version": 1,
+  "version": 2,
   "weekStart": "monday",
   "__inputs": [
     {
