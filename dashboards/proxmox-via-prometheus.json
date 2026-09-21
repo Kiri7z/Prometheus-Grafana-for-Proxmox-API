@@ -14,7 +14,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Disk is provisioned guest disk size. Filesystem usage inside QEMU guests is shown in the QEMU guest filesystem usage panel.",
+      "description": "Usage shows the most full filesystem reported by QEMU Guest Agent for QEMU VMs and filesystem usage reported by Proxmox for LXC containers. Guests without filesystem metrics show n/a.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -99,22 +99,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Disk"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              },
-              {
-                "id": "custom.width",
-                "value": 82
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Memory usage (%)"
             },
             "properties": [
@@ -186,7 +170,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Disk usage (%)"
+              "options": "Usage"
             },
             "properties": [
               {
@@ -403,28 +387,13 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (id) (pve_disk_size_bytes{instance=\"$instance\"} and on (id, instance) pve_guest_info)",
+          "expr": "max by (id) (pve_qga_fs_used_bytes{fstype!~\"tmpfs|devtmpfs|squashfs|overlay|sysfs|proc\"} / pve_qga_fs_size_bytes{fstype!~\"tmpfs|devtmpfs|squashfs|overlay|sysfs|proc\"}) or sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
           "format": "table",
           "hide": false,
           "instant": true,
           "legendFormat": "",
           "range": false,
-          "refId": "disksize"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "legendFormat": "",
-          "range": false,
-          "refId": "diskusg_percent"
+          "refId": "storage_usage"
         }
       ],
       "title": "Resource allocation summary",
@@ -447,14 +416,13 @@
               "Time 5": true,
               "Time 6": true,
               "Time 7": true,
-              "Value #disksize": false,
-              "Value #diskusg_percent": true,
               "Value #id, name and type": true,
               "Value #memsize": true,
               "Value #memusg_percent": false,
               "Value #status": false,
               "id": false,
-              "type": true
+              "type": true,
+              "Value #storage_usage": false
             },
             "includeByName": {},
             "indexByName": {
@@ -465,8 +433,6 @@
               "Time 5": 11,
               "Time 6": 13,
               "Time 7": 15,
-              "Value #disksize": 14,
-              "Value #diskusg_percent": 16,
               "Value #id, name and type": 4,
               "Value #memsize": 10,
               "Value #memusg_percent": 12,
@@ -474,12 +440,11 @@
               "Value #vcpus": 8,
               "id": 2,
               "name": 1,
-              "type": 3
+              "type": 3,
+              "Value #storage_usage": 14
             },
             "renameByName": {
               "Time 5": "",
-              "Value #disksize": "Disk",
-              "Value #diskusg_percent": "Disk usage (%)",
               "Value #id, name and type": "",
               "Value #memsize": "Memory",
               "Value #memusg_percent": "Memory usage (%)",
@@ -487,7 +452,8 @@
               "Value #vcpus": "CPU util",
               "id": "ID",
               "name": "Name",
-              "type": "Type"
+              "type": "Type",
+              "Value #storage_usage": "Usage"
             }
           }
         }
@@ -1824,202 +1790,6 @@
       "title": "LXC guests Disk usage",
       "type": "timeseries",
       "description": "Filesystem usage reported by Proxmox for LXC containers. QEMU guest filesystem usage requires guest-side metrics."
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Filesystem usage reported by QEMU Guest Agent. Guests without a working agent are omitted. Collected every five minutes.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.7
-              },
-              {
-                "color": "red",
-                "value": 0.9
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Used"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Usage"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percentunit"
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 76
-      },
-      "id": 25,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Usage"
-          }
-        ]
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "pve_qga_fs_used_bytes",
-          "format": "table",
-          "instant": true,
-          "range": false,
-          "refId": "used"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "pve_qga_fs_size_bytes",
-          "format": "table",
-          "instant": true,
-          "range": false,
-          "refId": "size"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "pve_qga_fs_used_bytes / pve_qga_fs_size_bytes",
-          "format": "table",
-          "instant": true,
-          "range": false,
-          "refId": "usage"
-        }
-      ],
-      "title": "QEMU guest filesystem usage",
-      "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "filesystem",
-            "mode": "outer"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time 1": true,
-              "Time 2": true,
-              "Time 3": true,
-              "Value #used": false,
-              "Value #size": false,
-              "Value #usage": false,
-              "disk": true,
-              "filesystem": true,
-              "vmid": true
-            },
-            "indexByName": {
-              "name": 0,
-              "id": 1,
-              "node": 2,
-              "mountpoint": 3,
-              "fstype": 4,
-              "Value #used": 5,
-              "Value #size": 6,
-              "Value #usage": 7
-            },
-            "renameByName": {
-              "name": "VM",
-              "id": "ID",
-              "node": "Node",
-              "mountpoint": "Filesystem",
-              "fstype": "Type",
-              "Value #used": "Used",
-              "Value #size": "Total",
-              "Value #usage": "Usage"
-            }
-          }
-        }
-      ],
-      "type": "table"
     }
   ],
   "preload": false,
@@ -2060,7 +1830,7 @@
   "timezone": "",
   "title": "Proxmox via Prometheus - 10347",
   "uid": "Dp7Cd57Zzz",
-  "version": 2,
+  "version": 3,
   "weekStart": "monday",
   "__inputs": [
     {
