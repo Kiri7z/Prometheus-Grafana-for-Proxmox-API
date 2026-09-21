@@ -53,6 +53,20 @@ services:
     networks:
       - monitoring_net
 
+  pve-qga-exporter:
+    build:
+      context: ./qga-exporter
+    image: local/pve-qga-exporter:1.0.0
+    container_name: pve-qga-exporter
+    restart: unless-stopped
+    volumes:
+      - ./secrets/pve.yml:/etc/prometheus/pve.yml:ro
+      - ./prometheus/targets.yml:/etc/prometheus/targets.yml:ro
+    expose:
+      - '9222'
+    networks:
+      - monitoring_net
+
 volumes:
   prometheus-data: {}
   grafana-data: {}

@@ -9,6 +9,7 @@ This repository runs a Docker Compose monitoring stack for a Proxmox VE cluster.
 | Component | Purpose |
 | --- | --- |
 | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) | Reads cluster, node, guest, and storage metrics from the Proxmox API. This link points to the exporter's **upstream project**, not to a copy of this repository. |
+| pve-qga-exporter | Reads filesystem usage inside running QEMU guests through the Proxmox API and QEMU Guest Agent. |
 | Prometheus | Scrapes and stores metrics from the exporters. |
 | Grafana | Displays the included Proxmox dashboard. |
 | node_exporter | Reports metrics for the host running this Compose stack. |
@@ -21,14 +22,25 @@ The versions used by this project are pinned in [docker-compose.yaml](docker-com
 - CPU and RAM usage for Proxmox nodes.
 - Usage of local storage per node and shared PBS storage once per storage name.
 - Guest CPU, memory, network, and disk I/O history where Proxmox exposes those metrics.
+- Filesystem usage inside QEMU guests that have a working QEMU Guest Agent.
 
-**Disk capacity is different from free space inside a VM.** The Proxmox API reports a QEMU virtual disk's configured size and I/O, but it does not reliably report used filesystem space inside that guest. The dashboard shows guest filesystem usage for LXC containers only. To measure free space inside a QEMU guest, collect filesystem metrics from its operating system. Proxmox *storage* usage is monitored separately.
+**Disk capacity is different from filesystem usage inside a VM.** The standard Proxmox resource metrics report a QEMU virtual disk's configured size and I/O. The included `pve-qga-exporter` additionally calls `get-fsinfo` through QEMU Guest Agent and exports used and total bytes for filesystems inside supported QEMU guests. Proxmox *storage* usage is monitored separately.
 
 ## 1. Create a read-only Proxmox API token
 
 1. In the Proxmox UI, open **Datacenter → Permissions → Users** and create a dedicated monitoring user, for example `monitoring@pve`. An existing read-only service account also works.
 2. Under **Datacenter → Permissions**, grant that user the `PVEAuditor` role at `/` so the exporter can read cluster-wide data.
 3. Create an API token for the user. If the token uses privilege separation, grant the token the same read-only access: its effective permissions are limited by both the token and its user. Copy the token value when it is displayed; Proxmox does not show it again.
+
+Filesystem collection through QEMU Guest Agent requires `VM.Audit` and `VM.Monitor` on `/vms`. A minimal custom role can be created and assigned to both the user and a privilege-separated token:
+
+```sh
+pveum role add GuestAgentMonitor --privs "VM.Audit VM.Monitor"
+pveum acl modify /vms --user monitoring@pve --role GuestAgentMonitor
+pveum acl modify /vms --token 'monitoring@pve!exporter' --role GuestAgentMonitor
+```
+
+The QEMU Guest Agent must also be enabled in Proxmox and installed and running inside each guest that should report filesystem usage.
 
 Use a token for monitoring rather than an administrator password. See the [Proxmox user-management guide](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf) and the [exporter's setup instructions](https://github.com/prometheus-pve/prometheus-pve-exporter#proxmox-ve-configuration) for permission details.
 
@@ -79,7 +91,7 @@ docker compose up -d
 docker compose ps
 ```
 
-On the monitoring host, open `http://localhost:9090/targets`. The `prometheus`, `node`, and `pve` jobs should be **UP**. In the Prometheus query page, try `pve_up`, `pve_guest_info`, and `pve_storage_info` to confirm that the Proxmox API data is present. Grafana is served on port 3000; complete its initial account setup before exposing it to other users.
+On the monitoring host, open `http://localhost:9090/targets`. The `prometheus`, `node`, `pve`, and `pve-qga` jobs should be **UP**. In the Prometheus query page, try `pve_up`, `pve_guest_info`, `pve_storage_info`, and `pve_qga_fs_used_bytes` to confirm that the Proxmox API data is present. Grafana is served on port 3000; complete its initial account setup before exposing it to other users.
 
 ## 4. Set up Grafana
 
@@ -99,6 +111,9 @@ The included dashboard builds on Grafana dashboard [10347, Proxmox via Prometheu
 ├── prometheus/
 │   ├── prometheus.yml
 │   └── targets.example.yml
+├── qga-exporter/
+│   ├── Dockerfile
+│   └── qga_exporter.py
 └── pve/pve.example.yml
 ```
 
