@@ -14,7 +14,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Usage shows the most full guest data filesystem reported by QEMU Guest Agent for QEMU VMs and filesystem usage reported by Proxmox for LXC containers. Optical media and Windows system/recovery partitions are excluded. Proxmox RAM is the host-side value reported by the Proxmox API; without a working balloon driver it can differ substantially from memory usage inside a QEMU guest.",
+      "description": "Usage shows only the system filesystem reported by QEMU Guest Agent: C:\\ for Windows guests and / for Linux guests. LXC containers use filesystem usage reported by Proxmox. Guests without system filesystem metrics show n/a. Proxmox RAM is the host-side value reported by the Proxmox API; without a working balloon driver it can differ substantially from memory usage inside a QEMU guest.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -387,7 +387,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max by (id) (pve_qga_fs_used_bytes{fstype!~\"(?i)(tmpfs|devtmpfs|squashfs|overlay|sysfs|proc|cdfs|udf|iso9660)\",mountpoint!~\"(?i)(system reserved|recovery)\"} / pve_qga_fs_size_bytes{fstype!~\"(?i)(tmpfs|devtmpfs|squashfs|overlay|sysfs|proc|cdfs|udf|iso9660)\",mountpoint!~\"(?i)(system reserved|recovery)\"}) or sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
+          "expr": "max by (id) (pve_qga_fs_used_bytes{mountpoint=~\"C:\\\\\\\\|/\"} / pve_qga_fs_size_bytes{mountpoint=~\"C:\\\\\\\\|/\"}) or sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
           "format": "table",
           "hide": false,
           "instant": true,
