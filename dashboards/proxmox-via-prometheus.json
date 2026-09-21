@@ -14,7 +14,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "Usage shows the most full filesystem reported by QEMU Guest Agent for QEMU VMs and filesystem usage reported by Proxmox for LXC containers. Guests without filesystem metrics show n/a.",
+      "description": "Usage shows the most full guest data filesystem reported by QEMU Guest Agent for QEMU VMs and filesystem usage reported by Proxmox for LXC containers. Optical media and Windows system/recovery partitions are excluded. Proxmox RAM is the host-side value reported by the Proxmox API; without a working balloon driver it can differ substantially from memory usage inside a QEMU guest.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -99,7 +99,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory usage (%)"
+              "options": "Proxmox RAM (%)"
             },
             "properties": [
               {
@@ -387,7 +387,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max by (id) (pve_qga_fs_used_bytes{fstype!~\"tmpfs|devtmpfs|squashfs|overlay|sysfs|proc\"} / pve_qga_fs_size_bytes{fstype!~\"tmpfs|devtmpfs|squashfs|overlay|sysfs|proc\"}) or sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
+          "expr": "max by (id) (pve_qga_fs_used_bytes{fstype!~\"(?i)(tmpfs|devtmpfs|squashfs|overlay|sysfs|proc|cdfs|udf|iso9660)\",mountpoint!~\"(?i)(system reserved|recovery)\"} / pve_qga_fs_size_bytes{fstype!~\"(?i)(tmpfs|devtmpfs|squashfs|overlay|sysfs|proc|cdfs|udf|iso9660)\",mountpoint!~\"(?i)(system reserved|recovery)\"}) or sum by (id) (pve_disk_usage_bytes{instance=\"$instance\"} / pve_disk_size_bytes and on (id, instance) pve_guest_info{type=\"lxc\"})",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -447,7 +447,7 @@
               "Time 5": "",
               "Value #id, name and type": "",
               "Value #memsize": "Memory",
-              "Value #memusg_percent": "Memory usage (%)",
+              "Value #memusg_percent": "Proxmox RAM (%)",
               "Value #status": "Status",
               "Value #vcpus": "CPU util",
               "id": "ID",

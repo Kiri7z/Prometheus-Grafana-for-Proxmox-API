@@ -16,7 +16,18 @@ MODULE = os.getenv("PVE_MODULE", "default")
 PORT = int(os.getenv("QGA_EXPORTER_PORT", "9222"))
 WORKERS = int(os.getenv("QGA_EXPORTER_WORKERS", "4"))
 TIMEOUT = int(os.getenv("QGA_EXPORTER_TIMEOUT", "8"))
-PSEUDO_FILESYSTEMS = {"tmpfs", "devtmpfs", "squashfs", "overlay", "sysfs", "proc"}
+PSEUDO_FILESYSTEMS = {
+    "tmpfs",
+    "devtmpfs",
+    "squashfs",
+    "overlay",
+    "sysfs",
+    "proc",
+    "cdfs",
+    "udf",
+    "iso9660",
+}
+PSEUDO_MOUNTPOINTS = {"system reserved", "recovery"}
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -141,6 +152,8 @@ class QgaFilesystemCollector:
 
                     for filesystem in filesystems:
                         if filesystem.get("type", "").lower() in PSEUDO_FILESYSTEMS:
+                            continue
+                        if filesystem.get("mountpoint", "").lower() in PSEUDO_MOUNTPOINTS:
                             continue
                         used = filesystem.get("used-bytes")
                         size = filesystem.get("total-bytes")
