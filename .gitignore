@@ -4,3 +4,11 @@ secrets/
 prometheus/targets.yml
 pve/pve.yml
 *.db
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
