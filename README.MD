@@ -4,7 +4,7 @@ This repository runs a Docker Compose monitoring stack for a Proxmox VE cluster.
 
 ![Grafana dashboard showing Proxmox guest and storage metrics](images/grafana-dashboard.png)
 
-*An earlier dashboard screenshot. The dashboard JSON in this repository contains the current layout.*
+*Dashboard preview with anonymized guest, node, and storage names. Import the dashboard JSON to display your own infrastructure.*
 
 | Component | Purpose |
 | --- | --- |
@@ -92,6 +92,14 @@ docker compose ps
 ```
 
 On the monitoring host, open `http://localhost:9090/targets`. The `prometheus`, `node`, `pve`, and `pve-qga` jobs should be **UP**. In the Prometheus query page, try `pve_up`, `pve_guest_info`, `pve_storage_info`, and `pve_qga_fs_used_bytes` to confirm that the Proxmox API data is present. Grafana is served on port 3000; complete its initial account setup before exposing it to other users.
+
+Exporter ports are available only inside the Compose network. Prometheus is bound to `127.0.0.1:9090`; its HTTP lifecycle endpoints are disabled. To inspect Prometheus remotely, use an SSH tunnel:
+
+```sh
+ssh -N -L 9090:127.0.0.1:9090 user@monitoring-host
+```
+
+Then open `http://localhost:9090/targets` on your computer. Keep Grafana behind your firewall and authenticated HTTPS reverse proxy. Exporters should not be published to the host just for Prometheus to scrape them: it uses their Compose service names.
 
 ## 4. Set up Grafana
 
